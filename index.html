@@ -1,0 +1,157 @@
+<!DOCTYPE html><html lang="id"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Word Quest: The Lost Document</title>
+<style>
+:root{--bg:#eef2ff;--fg:#1e1b4b;--card:#fff;--ac:#0d9488;--bd:#a5b4fc;--bad:#dc2626;--ok:#16a34a;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f172a;--fg:#e2e8f0;--card:#1e293b;--ac:#2dd4bf;--bd:#475569;--bad:#f87171;--ok:#4ade80}}
+:root[data-theme="dark"]{--bg:#0f172a;--fg:#e2e8f0;--card:#1e293b;--ac:#2dd4bf;--bd:#475569;--bad:#f87171;--ok:#4ade80}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--fg);font-family:system-ui,"Segoe UI",sans-serif;min-height:100vh}
+#app{max-width:860px;margin:auto;padding:12px}.scr{display:none}.scr.on{display:block}
+h1{margin:.2em 0;font-size:2.2em}h2{margin:0 0 .5em;color:var(--ac)}
+button{font:inherit;background:var(--ac);color:#04130f;border:0;border-radius:10px;padding:10px 14px;margin:4px;cursor:pointer;font-weight:600}button:hover{filter:brightness(1.1)}button:disabled{opacity:.4}
+input{font:inherit;padding:10px;border-radius:10px;border:2px solid var(--bd);background:var(--card);color:var(--fg);width:100%;max-width:300px}
+.card{background:var(--card);border:2px solid var(--bd);border-radius:14px;padding:14px;margin:8px 0;line-height:1.5}
+#menu{text-align:center;padding:30px 10px}
+canvas{width:100%;height:auto;border:3px solid var(--bd);border-radius:12px;display:block;background:#000}
+#hud{display:flex;flex-wrap:wrap;gap:10px;font-weight:600;padding:6px 2px}#msg{min-height:1.6em;padding:4px}
+.ov{display:none;position:fixed;inset:0;background:rgba(2,6,23,.8);z-index:5;overflow:auto;padding:12px;padding-top:calc(12px + env(safe-area-inset-top,0px))}.ov.on{display:block}
+.ov>.card{max-width:640px;margin:auto}
+.arena{display:flex;justify-content:space-between;gap:10px;position:relative;padding:10px;border-radius:12px;background:linear-gradient(#7c3aed33,#0d948833)}
+.sp{flex:1;text-align:center}.sp div:last-child{font-size:4.2em;line-height:1.1}.big div:last-child{font-size:5.5em;filter:drop-shadow(0 0 14px #f0f)}
+.bar{height:12px;background:#64748b55;border-radius:8px;overflow:hidden;margin:4px 0}.bar i{display:block;height:100%;background:var(--ok);transition:width .4s}#mh{background:var(--bad)}
+.sh{animation:sh .4s}@keyframes sh{25%{transform:translateX(-12px)}75%{transform:translateX(12px)}}
+.fl{position:absolute;left:50%;top:30%;font-size:1.8em;font-weight:800;animation:up 1s forwards;pointer-events:none}@keyframes up{to{transform:translateY(-50px);opacity:0}}
+.o{display:block;width:100%;text-align:left;background:var(--card);color:var(--fg);border:2px solid var(--bd)}.o.r{background:var(--ok);color:#000}.o.w{background:var(--bad);color:#000}
+#bl{min-height:3em;font-style:italic}#toast{position:fixed;top:12px;left:50%;transform:translateX(-50%);background:#facc15;color:#000;padding:8px 16px;border-radius:20px;font-weight:700;z-index:9;display:none}
+details{margin:6px 0}small{opacity:.8}
+</style></head><body><div id="app">
+<div id="menu" class="scr on"><h1>⚔️ WORD QUEST</h1><h2>The Lost Document</h2><p>Pulihkan Word Kingdom dari Dark Virus!</p><input id="nm" maxlength="14" placeholder="Nama petualang"><div><button id="bn">🆕 New Game</button><button id="bc">▶️ Continue</button><button id="bh">❓ How to Play</button><button id="bk">ℹ️ Credits</button></div></div>
+<div id="story" class="scr"><div class="card" id="st"></div><button id="sn">Lanjut ▶</button></div>
+<div id="game" class="scr"><div id="hud"></div><canvas id="cv" width="640" height="360"></canvas><div id="msg"></div><div><button id="bm">📜 Menu</button><button id="be">🅴 Interaksi</button></div></div>
+</div>
+<div id="battle" class="ov"><div class="card"><b id="bt"></b>
+<div class="arena" id="ar"><div class="sp"><div id="pn"></div><div class="bar"><i id="ph"></i></div><div id="pe">🧙</div></div><div class="sp" id="ms"><div id="mn"></div><div class="bar"><i id="mh"></i></div><div id="me"></div></div></div>
+<p id="bl"></p><div id="qb"></div><div id="ba"><button data-a="a">⚔️ Attack</button><button data-a="s">✨ Skill</button><button data-a="i">🧪 Item</button><button data-a="f">🏃 Escape</button></div></div></div>
+<div id="modal" class="ov"><div class="card" id="mb"></div></div><div id="toast"></div>
+<script>
+const $=s=>document.querySelector(s),KEY='wq1',esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const ZN=["Keyboard Village","Font Forest","Paragraph Canyon","Layout Mountain","Insert Ruins","Save Castle"];
+const PA=[["#bbf7d0","#a7f3d0"],["#86efac","#4ade80"],["#fde68a","#fcd34d"],["#cbd5e1","#94a3b8"],["#ddd6fe","#c4b5fd"],["#fca5a5","#f87171"]],DC=["🏠","🌲","🌵","⛰️","🏛️","🏰"];
+const MZ=[[["Typing Slime","🟢"],["Typo Imp","👾"]],[["Font Goblin","👺"],["Italic Bat","🦇"]],[["Alignment Wolf","🐺"],["Spacing Phantom","👻"]],[["Margin Golem","🪨"],["Paper Dragon","🐲"]],[["Table Guardian","🛡️"],["Image Phantom","🖼️"]],[["Save Error Knight","🤺"],["PDF Phantom","📄"]]];
+const BZ=[["Blank Wraith","🕸️"],["Font Demon","😈"],["Paragraph Titan","🗿"],["Layout Dragon","🐉"],["Insert Hydra","🐍"],["DARK DOCUMENT LORD","👹"]];
+const FP=["Fase 1: Dasar Word","Fase 2: Format Huruf","Fase 3: Format Paragraf","Fase 4: Layout & Insert","Fase 5: Simpan & Cetak"];
+const NP=["Master Editor: “{n}, Word adalah pengolah kata untuk surat, biodata, dan laporan. Tekan Ctrl + N untuk dokumen baru, dan Ctrl + Z adalah penyelamatmu!”","Penjaga Hutan: “Ingat, blok dulu baru format! Dokumen resmi memakai Times New Roman atau Arial ukuran 12, judul 14 Bold.”","Penjaga Lembah: “Ctrl + L rata kiri, E tengah, R kanan, J kiri-kanan. Spasi surat 1,15 atau 1,5 dan baris pertama menjorok 1,25 cm.”","Pendaki Tua: “Semua pengaturan halaman ada di tab Layout: Size A4, Margins 3 cm, Orientation Portrait atau Landscape.”","Arkeolog: “Insert untuk Table, Pictures, dan Page Number. Pindah sel pakai Tab; ukuran gambar tarik dari sudut.”","Pustakawan Kastil: “DOCX untuk diedit, PDF untuk dikirim. Ctrl + S simpan, F12 Save As, Ctrl + P cetak. Kau pasti bisa, {n}!”"];
+const TM=["Hehehe! Dokumenmu akan kuacak-acak, {n}!","Dark Virus memberiku kekuatan. Coba kalahkan aku!","Jurus Word-mu belum cukup, Apprentice!"],TB=["Aku penjaga kuat. Kau akan menyerah, {n}!","Kekacauan ini tak bisa dihentikan!","Dokumen kerajaan akan menjadi milikku!"];
+const IN=["⚔️ Lawan melepas teka-teki! Jawab dengan tepat:","🔮 Kekuatan Word diuji. Pilih jurus yang benar:","🛡️ Serangan hanya mempan bila kamu tahu jurusnya:"];
+const Q=[[
+"Master Editor bertanya: aplikasi apa untuk membuat surat, biodata, dan laporan?|Microsoft Word|Pemutar video|Peramban web|Kalkulator",
+"Word sudah terbuka, kamu butuh dokumen baru secepat kilat. Pintasan apa?|Ctrl + N|Ctrl + P|Ctrl + O|Ctrl + W",
+"Di halaman awal Word, kamu ingin lembar putih kosong. Pilih apa?|Blank document|Print|Export|Close",
+"Bagian di bawah Title Bar yang berisi tab dan tombol perintah disebut?|Ribbon|Ruler|Status Bar|Zoom",
+"Kamu salah merapal mantra! Pintasan membatalkan langkah terakhir?|Ctrl + Z|Ctrl + Y|Ctrl + X|Ctrl + A",
+"Bagian paling bawah layar yang menampilkan jumlah halaman dan kata?|Status Bar|Title Bar|Ribbon|Ruler"],[
+"Font Goblin mengacaukan tulisan. Apa yang WAJIB dilakukan sebelum mengubah huruf?|Memblok teksnya|Menyimpan dokumen|Mencetak dokumen|Menutup Word",
+"Tab mana menyimpan kotak Font, Font Size, dan Font Color?|Home|Insert|Layout|Design",
+"Dokumen resmi umumnya memakai font dan ukuran isi?|Times New Roman atau Arial, 12|Font hias, 28|Ukuran 6|Ukuran 72",
+"Judul dokumen resmi sebaiknya berukuran dan bergaya?|14 dan Bold|8 dan Italic|11 dan Underline|72 biasa",
+"Warna huruf diubah lewat tombol?|Font Color|Shading|Borders|Zoom",
+"Bold Beast menyerang! Kekuatan untuk tulisan tebal?|Ctrl + B|Ctrl + I|Ctrl + U|Ctrl + R",
+"Italic Bat mengincar! Pintasan tulisan miring?|Ctrl + I|Ctrl + B|Ctrl + U|Ctrl + J",
+"Untuk menggarisbawahi nama pahlawan, pakai pintasan?|Ctrl + U|Ctrl + B|Ctrl + I|Ctrl + E"],[
+"Judul surat harus di tengah. Tekan?|Ctrl + E|Ctrl + L|Ctrl + R|Ctrl + J",
+"Tanggal surat ingin rata kanan. Tekan?|Ctrl + R|Ctrl + L|Ctrl + E|Ctrl + J",
+"Dokumen berantakan! Paragraf isi ingin rata kiri dan kanan. Perintah tepat?|Justify|Align Left|Align Center|Align Right",
+"Alignment Wolf bertanya: Ctrl + L untuk apa?|Rata kiri|Rata kanan|Rata tengah|Rata kiri-kanan",
+"Spacing Phantom: spasi standar surat/laporan?|1,15 atau 1,5|10|0|5",
+"Pintasan untuk spasi 1,5?|Ctrl + 5|Ctrl + 1|Ctrl + 2|Ctrl + 9",
+"Indent Guardian: agar baris pertama menjorok, di kotak Paragraf pilih Special →?|First line|Hanging|Left|Mirror",
+"Nilai First line indent di latihan surat?|1,25 cm|10 cm|0 cm|5 cm"],[
+"Paper Dragon: ukuran kertas standar dokumen di Indonesia?|A4 (21 × 29,7 cm)|Letter|A0|Poster",
+"Tab untuk Size, Margins, dan Orientation?|Layout|Home|Insert|File",
+"Margin umum dokumen resmi Indonesia (di modul)?|3 cm semua sisi|0 cm|10 cm|1 mm",
+"Margin Normal bawaan Word?|2,54 cm|5 cm|0 cm|10 cm",
+"Orientasi tegak untuk surat dan biodata?|Portrait|Landscape|Diagonal|Terbalik",
+"Tabel lebar atau sertifikat cocok memakai?|Landscape|Portrait|Tanpa orientasi|Mini",
+"Di beberapa versi Word, tab Layout bernama?|Page Layout|Page Setup Pro|Paper Tab|Margin Tab",
+"Sebagian Word memakai ukuran bawaan ini, sehingga perlu dicek ulang:|Letter|A4|A0|A10"],[
+"Table Guardian: tab untuk menyisipkan tabel?|Insert|Home|Design|Review",
+"Berpindah antar sel tabel dengan?|Tab|Enter|Esc|F1",
+"Menambah baris baru di sel terakhir?|Tekan Tab|Tekan Esc|Ctrl + Q|Alt + F4",
+"Memberi warna judul kolom lewat Table Design →?|Shading|Font Size|Orientation|Print",
+"Image Phantom: sisipkan foto dari komputer. Insert → Pictures →?|This Device|Print|Export|Close",
+"Mengubah ukuran gambar agar proporsi tetap?|Tarik sudutnya|Tarik sisinya|Klik ganda teks|Tekan Enter",
+"Gambar tak bisa digeser bebas (In Line with Text). Solusinya?|Layout Options → Square/In Front of Text|Ganti font|Tutup Word|Margin 0",
+"Nomor halaman tengah bawah: Page Number → Bottom of Page →?|Plain Number 2|Top of Page|Format Painter|Shading",
+"Nomor halaman tak muncul karena belum keluar dari mode footer. Klik?|Close Header and Footer|Print|Undo|Blank document"],[
+"Menyimpan dokumen dengan cepat?|Ctrl + S|Ctrl + P|Ctrl + N|Ctrl + H",
+"Tombol cepat untuk Save As?|F12|F1|F7|F5",
+"Save Error Knight: format yang masih bisa diedit?|DOCX|PDF|PNG|MP3",
+"PDF Phantom: format final yang tampil selalu sama dan siap dikirim?|PDF|DOCX|TXT|Blank",
+"DOCX Guardian: pastikan Save as type berisi?|Word Document (*.docx)|PDF (*.pdf)|Gambar|Musik",
+"Mencetak dokumen dengan pintasan?|Ctrl + P|Ctrl + S|Ctrl + O|Ctrl + M",
+"Tidak ada printer. Pilih?|Microsoft Print to PDF|Print to Mars|Hapus printer|Matikan Word",
+"Alternatif simpan PDF lewat File →?|Export → Create PDF/XPS|Open|Close|Share Link",
+"Proyek akhir biodata: halaman A4 Portrait dengan margin?|3 cm semua sisi|0 cm|0,1 cm|12 cm",
+"Dokumen masih direvisi. Simpan sebagai?|DOCX|PDF saja|Foto|Cetak"]];
+const ACH=[["First Victory",s=>s.kills>=1],["Word Apprentice",s=>s.boss[0]],["Font Master",s=>s.boss[1]],["Paragraph Knight",s=>s.boss[2]],["Layout Explorer",s=>s.boss[3]],["Insert Specialist",s=>s.boss[4]],["Document Saver",s=>s.done['5m0']&&s.done['5m1']],["Boss Slayer",s=>Object.keys(s.boss).length>=3],["Perfect Battle",s=>s.perf],["Treasure Hunter",s=>s.ch>=3],["Document Master",s=>s.end]];
+const EN=[];for(let z=0;z<6;z++){const o=z*10;MZ[z].forEach((m,i)=>EN.push({id:z+'m'+i,z,k:'m',x:o+4,y:i?6:2,e:m[1],n:m[0],h:2}));EN.push({id:z+'c',z,k:'c',x:o+6,y:7,e:'🧰',n:'Peti Terkunci',h:1},{id:z+'b',z,k:'b',x:o+8,y:4,e:BZ[z][1],n:BZ[z][0],h:z==5?10:6},{id:z+'n',z,k:'n',x:o+1,y:2,e:'🧓',n:'NPC'})}
+const DP=[[0,8],[3,0],[6,3],[9,8],[2,5],[9,1]];
+let S=null,B=null,busy=0,pz=0;
+const mh=()=>100+(S.lv-1)*15,near=e=>Math.max(Math.abs(e.x-S.x),Math.abs(e.y-S.y))<=1,nm=()=>esc(S.n);
+const fresh=n=>({n,lv:1,xp:0,hp:100,gold:0,pot:2,unl:0,x:2,y:4,done:{},boss:{},ach:{},npc:{},kills:0,ch:0,perf:0,end:0});
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(S))}catch(e){}},load=()=>{try{return JSON.parse(localStorage.getItem(KEY))}catch(e){return null}};
+const scr=id=>document.querySelectorAll('.scr').forEach(e=>e.classList.toggle('on',e.id==id));
+function toast(t){const e=$('#toast');e.textContent=t;e.style.display='block';clearTimeout(toast.t);toast.t=setTimeout(()=>e.style.display='none',2200)}
+function modal(h,b){$('#mb').innerHTML=h+'<div>'+(b||[["OK"]]).map((x,i)=>'<button data-i="'+i+'">'+x[0]+'</button>').join('')+'</div>';$('#modal').classList.add('on');$('#mb').querySelectorAll('button').forEach(bt=>bt.onclick=()=>{$('#modal').classList.remove('on');const f=(b||[["OK"]])[bt.dataset.i][1];f&&f()})}
+function chkA(){ACH.forEach(a=>{if(!S.ach[a[0]]&&a[1](S)){S.ach[a[0]]=1;toast('🏆 Achievement: '+a[0])}})}
+function lvl(){while(S.xp>=S.lv*50){S.xp-=S.lv*50;S.lv++;S.hp=mh();toast('⬆️ LEVEL UP! Lv '+S.lv)}}
+function hud(){$('#hud').innerHTML='<span>🧙 '+nm()+' Lv'+S.lv+'</span><span>❤️ '+S.hp+'/'+mh()+'</span><span>⭐ '+S.xp+'/'+S.lv*50+'</span><span>💰 '+S.gold+'</span><span>🧪 '+S.pot+'</span><span>💎 '+Object.keys(S.boss).length+'/6</span><span>📍 '+ZN[S.x/10|0]+'</span>'}
+const msg=t=>$('#msg').textContent=t;
+const cx=$('#cv').getContext('2d');
+function draw(){const W=640,c=cx,cam=Math.max(0,Math.min(2400-W,S.x*40-W/2+20)),T=Date.now()/300;c.textAlign='center';c.textBaseline='middle';
+for(let tx=cam/40|0;tx<=Math.ceil((cam+W)/40);tx++)for(let ty=0;ty<9;ty++){const z=tx/10|0;if(z>5)continue;c.fillStyle=PA[z][(tx+ty)%2];c.fillRect(tx*40-cam,ty*40,40,40);if(z>S.unl){c.fillStyle='rgba(0,0,0,.55)';c.fillRect(tx*40-cam,ty*40,40,40)}}
+c.font='28px serif';for(let z=0;z<6;z++)DP[z].length&&DP.forEach(d=>c.fillText(DC[z],(z*10+d[0])*40+20-cam,d[1]*40+20));
+if(S.unl<5)for(let y=0;y<9;y++)c.fillText('🔒',(S.unl+1)*400+20-cam,y*40+20);
+EN.forEach(e=>{if(S.done[e.id])return;c.font=(e.k=='b'?38:30)+'px serif';c.fillText(e.e,e.x*40+20-cam,e.y*40+20+Math.sin(T+e.x)*3)});
+c.font='32px serif';c.fillText('🧙',S.x*40+20-cam,S.y*40+20)}
+function mv(dx,dy){const nx=S.x+dx,ny=S.y+dy;if(nx<0||ny<0||ny>8||nx>Math.min(59,10*(S.unl+1)-1))return;S.x=nx;S.y=ny;const z=nx/10|0;if(z!=pz){pz=z;msg('📍 '+ZN[z])}
+const e=EN.find(e=>!S.done[e.id]&&(e.k=='m'||e.k=='b')&&near(e));hud();draw();if(e)fight(e)}
+function inter(){const e=EN.find(e=>!S.done[e.id]&&(e.k=='n'||e.k=='c')&&near(e));if(!e){msg('Tidak ada yang bisa diajak interaksi di dekatmu.');return}
+if(e.k=='c')return fight(e);S.npc[e.z]=1;let ex='';if(e.z==0&&!S.npc.g){S.npc.g=1;S.pot++;ex='<p>🎁 Quest sampingan selesai: +1 Potion!</p>'}modal('<h3>🧓 NPC</h3><p>'+NP[e.z].replace('{n}',nm())+'</p>'+ex);hud();save()}
+function pool(){const z=B.e.z;if(B.e.k!='b')return Q[z];const ph=z==5?5:3,p=B.p;if(z==5)return p==3?Q[3].concat(Q[4]):Q[[0,1,2,3,5][p]];const L=Q[z].length;return Q[z].slice(Math.floor(p*L/ph),Math.floor((p+1)*L/ph))}
+function phase(){const ph=B.e.z==5?5:3;return Math.min(ph-1,Math.floor((B.max-B.hp)/(B.max/ph)))}
+function fight(e){const k=e.k;B={e,hp:e.h,max:e.h,w:0,sp:3,u:{},p:0};busy=0;$('#me').textContent=e.e;$('#mn').textContent=e.n;$('#ms').className='sp'+(k=='b'?' big':'');$('#bt').textContent=k=='b'?'👑 BOSS BATTLE — '+e.n:k=='c'?'🧰 Peti Harta':'⚔️ Pertarungan — '+ZN[e.z];
+$('#bl').textContent=k=='c'?'Peti ini terkunci mantra Word. Jawab untuk membukanya!':(k=='b'?TB:TM)[Math.random()*3|0].replace('{n}',S.n)+(k=='b'&&e.z==5?' — Dark Document Lord: “Semua dokumen akan kubuat kacau!”':'');$('#qb').innerHTML='';$('#battle').classList.add('on');rb()}
+function rb(){$('#pn').textContent=S.n+' Lv'+S.lv+' ❤️'+S.hp+'/'+mh();$('#ph').style.width=Math.max(0,S.hp/mh()*100)+'%';$('#mh').style.width=B.hp/B.max*100+'%';B.p=B.e.k=='b'?phase():0;if(B.e.k=='b')$('#bt').textContent='👑 '+B.e.n+' — '+(B.e.z==5?FP[B.p]:'Fase '+(B.p+1)+'/3');document.querySelector('[data-a=s]').textContent='✨ Skill ('+B.sp+')';document.querySelector('[data-a=i]').textContent='🧪 Item ('+S.pot+')'}
+function fl(t,col){const s=document.createElement('span');s.className='fl';s.style.color=col;s.textContent=t;$('#ar').appendChild(s);setTimeout(()=>s.remove(),1000)}
+function shake(id){const e=$(id);e.classList.remove('sh');void e.offsetWidth;e.classList.add('sh')}
+function ask(sk){busy=1;const P=pool(),f=P.filter(s=>!B.u[s]),L=f.length?f:P,s=L[Math.random()*L.length|0];B.u[s]=1;const a=s.split('|'),ok=a[1],o=a.slice(1).sort(()=>Math.random()-.5);
+$('#qb').innerHTML='<p><b>'+IN[Math.random()*3|0]+'</b></p><p>'+a[0]+'</p>'+o.map(t=>'<button class="o">'+t+'</button>').join('');
+$('#qb').querySelectorAll('.o').forEach(b=>b.onclick=()=>{const r=b.textContent==ok;$('#qb').querySelectorAll('.o').forEach(x=>{x.disabled=1;if(x.textContent==ok)x.classList.add('r')});if(!r)b.classList.add('w');setTimeout(()=>{$('#qb').innerHTML='';res(r,sk)},900)})}
+function res(r,sk){const e=B.e;if(r){const n=sk?2:1,pb=B.p;B.hp=Math.max(0,B.hp-n);S.xp+=10*n;lvl();shake('#me');fl('💥 -'+n*30,'#facc15');$('#bl').textContent='✅ Jurus tepat! '+(sk?'Combo Skill ':'Serangan ')+'mengenai '+e.n+'!';rb();if(B.hp<=0)return win();if(e.k=='b'&&B.p!=pb)$('#bl').textContent+=' '+e.n+': “Argh! Kini kekuatan baruku bangkit!”';busy=0;hud()}
+else{const d=(e.k=='c'?6:e.k=='m'?12:20)+e.z*2,dm=sk?d*2:d;S.hp-=dm;B.w++;shake('#pe');fl('-'+dm,'#ef4444');$('#bl').textContent='❌ Salah! '+e.n+' membalas'+(e.k!='n'?' — “'+(e.k=='b'?'Kau lemah, '+S.n+'!':'Hehe, salah!')+'”':'');rb();hud();if(S.hp<=0)return revive();busy=0}}
+function revive(){busy=1;modal('<h3>💀 HP habis!</h3><p>Progresmu aman. Pilih cara bangkit:</p>',[["🧪 Pakai Potion"+(S.pot?'':' (kosong)'),()=>{if(S.pot){S.pot--;S.hp=Math.min(mh(),50);busy=0;rb();hud();save()}else revive()}],["🏕️ Kembali ke Checkpoint",()=>{S.hp=Math.ceil(mh()/2);S.x=(B.e.z*10)+1;S.y=4;$('#battle').classList.remove('on');B=null;hud();draw();save()}]])}
+function win(){const e=B.e,k=e.k;S.done[e.id]=1;let xp=k=='m'?20:k=='b'?60:10,g=k=='m'?15:k=='b'?60:30,tx='';if(k!='m')S.pot++;if(k=='c'){S.ch++;tx='🧪 +1 Potion. '}if(k=='m'){S.kills++}if(!B.w&&k!='c')S.perf=1;
+if(k=='b'){S.boss[e.z]=1;S.pot++;tx='🧪 +2 Potion, 💎 Word Crystal '+(e.z+1)+'/6. ';if(e.z==S.unl&&e.z<5){S.unl++;tx+='🔓 Area terbuka: '+ZN[S.unl]+'!'}if(e.z==5)S.end=1}
+S.xp+=xp;S.gold+=g;lvl();chkA();save();hud();draw();$('#battle').classList.remove('on');B=null;
+if(S.end)return modal('<h1>🏆 VICTORY!</h1><p>Dark Document Lord lenyap. Word Kingdom pulih: dokumen rapi, font bersinar, paragraf tertata, semua file tersimpan!</p><p><b>'+nm()+'</b>, kini kau bergelar <b>Document Master</b> 👑</p><p>Level '+S.lv+' · 💰 '+S.gold+' · Achievement '+Object.keys(S.ach).length+'/'+ACH.length+'</p>',[["Lanjut menjelajah"]]);
+modal('<h3>🎉 '+e.n+' dikalahkan!</h3><p>+'+xp+' XP, +'+g+' Gold. '+tx+'</p>')}
+document.querySelectorAll('#ba button').forEach(b=>b.onclick=()=>{if(busy||!B)return;const a=b.dataset.a;
+if(a=='a')ask(0);else if(a=='s'){if(B.sp<1)return toast('SP habis!');B.sp--;rb();ask(1)}
+else if(a=='i'){if(S.pot<1||S.hp>=mh())return toast(S.pot<1?'Potion habis':'HP sudah penuh');S.pot--;S.hp=Math.min(mh(),S.hp+50);rb();hud();$('#bl').textContent='🧪 Potion memulihkan 50 HP.'}
+else{if(B.e.k=='b')return toast('Boss tidak bisa ditinggalkan!');$('#battle').classList.remove('on');S.x=Math.max(B.e.z*10,S.x-2);B=null;draw();hud()}});
+function panel(){const U=ZN.map((z,i)=>{const d=S.boss[i],a=i<=S.unl;return '<li>'+(d?'✅':a?'🔸':'🔒')+' Pulihkan '+z+': kalahkan '+BZ[i][0]+' <small>(Reward: Word Crystal, 60 Gold)</small></li>'}).join('');
+modal('<h3>📜 Quest</h3><b>Utama</b><ul>'+U+'</ul><b>Sampingan</b><ul><li>'+(S.npc.g?'✅':'🔸')+' Bantu Master Editor (bicara dengannya)</li><li>'+(S.ch>=3?'✅':'🔸')+' Buka 3 peti harta ('+S.ch+'/3)</li><li>'+(S.kills>=6?'✅':'🔸')+' Kalahkan 6 monster ('+S.kills+'/6)</li></ul><h3>🎒 Inventory</h3><p>🧪 Potion ×'+S.pot+' · 💰 '+S.gold+' Gold · 💎 Word Crystal '+Object.keys(S.boss).length+'/6</p><h3>🏆 Achievement</h3><p>'+ACH.map(a=>(S.ach[a[0]]?'🏆 ':'⬜ ')+a[0]).join('<br>')+'</p>',
+[["💾 Simpan",()=>{save();toast('Tersimpan!')}],["🗑️ Reset Game",()=>{if(confirm('Hapus seluruh progres?')){try{localStorage.removeItem(KEY)}catch(e){}S=null;scr('menu');init()}}],["Tutup"]])}
+const STORY=["Word Kingdom dahulu damai. Surat, laporan, dan data kerajaan dikelola dengan kekuatan Microsoft Word.","Lalu Dark Virus datang! Penjaga menjadi monster, font kehilangan kekuatan, paragraf kacau, dan dokumen kerajaan tak bisa disimpan.","Master Editor: “Selamat datang, {n}, Apprentice Document Hero! Kalahkan penjaga di 6 wilayah, kumpulkan Word Crystal, dan hadapi Dark Document Lord!”","Kontrol: WASD / Panah untuk bergerak. Dekati monster untuk bertarung. Tekan E untuk bicara dengan NPC atau membuka peti. Jawaban benar = serangan!"];let si=0;
+function story(){$('#st').innerHTML=STORY[si].replace('{n}','<b>'+nm()+'</b>');$('#sn').textContent=si==STORY.length-1?'Mulai Petualangan ⚔️':'Lanjut ▶'}
+function start(){scr('game');pz=S.x/10|0;hud();draw();msg('📍 '+ZN[pz]+' — Cari Master Editor (🧓) dan tekan E.')}
+function init(){$('#bc').style.display=load()?'':'none'}
+$('#bn').onclick=()=>{const n=$('#nm').value.trim()||'Hero';S=fresh(n);save();si=0;scr('story');story()};
+$('#sn').onclick=()=>{if(++si<STORY.length)story();else start()};
+$('#bc').onclick=()=>{const l=load();if(l){S=l;start()}};
+$('#bh').onclick=()=>modal('<h3>❓ Cara Bermain</h3><p>Gerak: WASD/Panah. Dekati monster → battle. Attack/Skill butuh jawaban benar; jawaban salah mengurangi HP. Skill (3×/battle) memberi 2× damage tetapi 2× risiko. E = bicara NPC / buka peti. Kalahkan Boss untuk membuka area baru. Progres tersimpan otomatis.</p>');
+$('#bk').onclick=()=>modal('<h3>ℹ️ Credits</h3><p>Word Quest: The Lost Document, berdasarkan Modul Private Microsoft Office — Pertemuan 1: Microsoft Word untuk Pemula.</p>');
+$('#bm').onclick=()=>panel();$('#be').onclick=()=>inter();
+addEventListener('keydown',e=>{if(!S||!$('#game').classList.contains('on')||document.querySelector('.ov.on'))return;const k=e.key.toLowerCase(),m={w:[0,-1],arrowup:[0,-1],s:[0,1],arrowdown:[0,1],a:[-1,0],arrowleft:[-1,0],d:[1,0],arrowright:[1,0]}[k];if(m){e.preventDefault();mv(m[0],m[1])}else if(k=='e')inter()});
+setInterval(()=>{if(S&&$('#game').classList.contains('on'))draw()},120);init();
+</script></body></html>
